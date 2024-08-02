@@ -1,0 +1,4 @@
+[submodule "third_party/llvm-project"]
+	path = third_party/llvm-project
+	url = https://github.com/gokulkrishna98/llvm-project.git
+	branch = bazel_llvm_18
