@@ -2,3 +2,5 @@ bazel-bin
 bazel-out
 bazel-testlogs
 bazel-GGlow
+.vscode
+build
