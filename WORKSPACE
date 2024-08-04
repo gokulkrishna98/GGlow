@@ -27,10 +27,9 @@ http_archive(
     name = "libtorch",
     strip_prefix = "libtorch",
     sha256 = "9d16cc0da41e057f20c0be5f26d7418f969e857631cfcb86550ccdecfee8de60",
-    urls = ["https://download.pytorch.org/libtorch/cu121/libtorch-cxx11-abi-shared-with-deps-2.4.0%2Bcu121.zip"],
+    urls = ["https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.4.0%2Bcpu.zip"],
     build_file = "//third_party/torchscript:libtorch.BUILD",
 )
-
 
 # EXTERNAL DEPENDENCIES NEEDED BY LLVM BAZEL
 maybe(

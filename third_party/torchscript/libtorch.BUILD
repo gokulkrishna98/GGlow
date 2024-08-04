@@ -1,8 +1,5 @@
 # Note down in documentation:
-# We cannot link libtorch_python.so, because we have not linked python libraries
-# we will get undefined refernece to libraries to python types and functions.
-
-# After Adding python libraries to environment we can add it.
+# added -lpython3.10 (dont know how this linking options worked xd)
 
 cc_library(
     name = "libtorch",
@@ -16,7 +13,8 @@ cc_library(
         "lib/libtorchbind_test.so",
         "lib/libjitbackend_test.so",
         "lib/libshm.so",
-        # "lib/libtorch_python.so"
+        "lib/libtorch_python.so",
+        "lib/libgomp-98b21ff3.so.1"
     ],
     linkopts = [
         "-ltorch",
@@ -28,14 +26,16 @@ cc_library(
         "-ltorchbind_test",
         "-ljitbackend_test",
         "-lshm",
-        # "-ltorch_python"
+        "-ltorch_python",
+        "-lpython3.10",
+        "-lgomp"
     ],
     hdrs = glob(["include/**/*.h"]),
     includes = [
         "include",
         "include/torch/csrc/api/include"
     ],
-
-    copts = ["-D_GLIBCXX_USE_CXX11_ABI=0"],
-    visibility = ["//visibility:public"]
+    copts = ["-D_GLIBCXX_USE_CXX11_ABI=1"],
+    visibility = ["//visibility:public"],
 )
+
