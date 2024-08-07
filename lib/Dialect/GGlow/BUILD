@@ -78,12 +78,12 @@ gentbl_cc_library(
 # )
 
 cc_library(
-    name = "GGlow",
+    name = "GGlowDialect",
     srcs = [
-        "GGlow.cpp"
+        "GGlowDialect.cc"
     ],
     hdrs = [
-        "GGlow.h",
+        "GGlowDialect.h",
     ],
     deps = [
         ":dialect_inc_gen",

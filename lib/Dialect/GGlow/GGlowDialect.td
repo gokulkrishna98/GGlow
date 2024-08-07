@@ -8,5 +8,5 @@ def Glow_Dialect : Dialect {
     and implements smart lowering.
   }];
 
-  let cppNamespace = "::mlir::tutorial::GGlow";
+  let cppNamespace = "::mlir::gglow";
 }
