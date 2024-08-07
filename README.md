@@ -25,3 +25,8 @@ clang-format --style=WebKit -i gglow.cpp
 ## Current WIP
 represent the whole graph using an IR using MLIR taking
 inspiration from Glow IR.
+
+## Current TODO
+- Define Operations
+- Define Types
+- Create APIs to generate MLIR.
