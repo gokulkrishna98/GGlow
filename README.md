@@ -30,3 +30,6 @@ inspiration from Glow IR.
 - Define Operations
 - Define Types
 - Create APIs to generate MLIR.
+
+## References and Learning topics
+- Torch-MLIR: https://github.com/llvm/torch-mlir/blob/main/docs/architecture.md
