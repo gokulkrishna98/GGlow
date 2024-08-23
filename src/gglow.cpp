@@ -6,6 +6,15 @@
 #include <string>
 #include <unordered_map>
 
+#include "lib/Dialect/GGlow/GGlow.h"
+
+auto convert_to_llvm(std::string file)->void
+{
+    test_GGlow();
+    return;
+}
+
+
 auto print_model_details(std::string model_path) -> void
 {
     // layer dict
@@ -39,6 +48,7 @@ auto print_model_details(std::string model_path) -> void
     }
 }
 
+
 auto main() -> int
 {
     try {
@@ -47,6 +57,16 @@ auto main() -> int
         std::cerr << "Error loading the model: " << e.what() << std::endl;
         return -1;
     }
+
+    auto ir_string = R"(
+        module {
+            func.func @main() {
+                return
+            }
+        }
+    )";
+
+    convert_to_llvm(ir_string);
 
     return 0;
 }

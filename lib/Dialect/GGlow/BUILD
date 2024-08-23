@@ -15,6 +15,7 @@ td_library(
         "@llvm-project//mlir:InferTypeOpInterfaceTdFiles",
         "@llvm-project//mlir:OpBaseTdFiles",
         "@llvm-project//mlir:SideEffectInterfacesTdFiles",
+        "@llvm-project//mlir:FunctionInterfacesTdFiles",
     ],
 )
 
@@ -56,26 +57,26 @@ gentbl_cc_library(
 #     ],
 # )
 
-# gentbl_cc_library(
-#     name = "ops_inc_gen",
-#     tbl_outs = [
-#         (
-#             ["-gen-op-decls"],
-#             "GGlowOps.h.inc",
-#         ),
-#         (
-#             ["-gen-op-defs"],
-#             "GGlowOps.cpp.inc",
-#         ),
-#     ],
-#     tblgen = "@llvm-project//mlir:mlir-tblgen",
-#     td_file = "GGlowOps.td",
-#     deps = [
-#         ":dialect_inc_gen",
-#         ":td_files",
-#         ":types_inc_gen",
-#     ],
-# )
+gentbl_cc_library(
+    name = "ops_inc_gen",
+    tbl_outs = [
+        (
+            ["-gen-op-decls"],
+            "GGlowOps.h.inc",
+        ),
+        (
+            ["-gen-op-defs"],
+            "GGlowOps.cpp.inc",
+        ),
+    ],
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
+    td_file = "GGlowOps.td",
+    deps = [
+        ":dialect_inc_gen",
+        ":td_files",
+        # ":types_inc_gen",
+    ],
+)
 
 cc_library(
     name = "GGlowDialect",
@@ -87,12 +88,33 @@ cc_library(
     ],
     deps = [
         ":dialect_inc_gen",
-        # ":ops_inc_gen",
+        ":ops_inc_gen",
         # ":types_inc_gen",
+        # mlir dependency
         "@llvm-project//mlir:ComplexDialect",
         "@llvm-project//mlir:Dialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:InferTypeOpInterface",
         "@llvm-project//mlir:Support",
+        "@llvm-project//mlir:Analysis",
+        "@llvm-project//mlir:Parser",
+        "@llvm-project//mlir:SideEffectInterfaces",
+        "@llvm-project//mlir:Transforms",
+        "@llvm-project//mlir:AllPassesAndDialects",
+        # llvm dependency
+        "@llvm-project//llvm:Support"
+    ],
+)
+
+cc_library(
+    name = "GGlowLib",
+    srcs = [
+        "GGlow.cc"
+    ],
+    hdrs = [
+        "GGlow.h"
+    ],
+    deps = [
+        ":GGlowDialect",
     ],
 )
