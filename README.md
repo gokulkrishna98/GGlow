@@ -4,6 +4,7 @@ Graph lowering (Glow) experimental implementation using MLIR
 ## Requirements
 - Install the latest version of bazelisk: [details](https://github.com/bazelbuild/bazelisk?tab=readme-ov-file#installation)
 - Install the python3.10 (preferebly using conda): [help](https://saturncloud.io/blog/how-to-create-a-conda-environment-with-a-specific-python-version/)
+- Have Clang compiler tools installed
 
 ## Building Steps
 - Clone the repo and go inside
