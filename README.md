@@ -11,6 +11,11 @@ Graph lowering (Glow) experimental implementation using MLIR
 git clone https://github.com/gokulkrishna98/GGlow.git
 cd GGlow
 ```
+- Clone the submodules
+```
+git submodule init
+git submodule update
+```
 - Run the bazel build command
     - For building GlowDialect
     ```
