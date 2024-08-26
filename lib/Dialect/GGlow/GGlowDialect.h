@@ -1,5 +1,5 @@
-#ifndef MLIR_DIALECT_GGLOW_GGLOWDIALECT_H
-#define MLIR_DIALECT_GGLOW_GGLOWDIALECT_H
+#ifndef GGLOWDIALECT_H
+#define GGLOWDIALECT_H
 #include "mlir/include/mlir/IR/DialectImplementation.h"
 #include "mlir/Bytecode/BytecodeOpInterface.h"
 #include "mlir/IR/Dialect.h"

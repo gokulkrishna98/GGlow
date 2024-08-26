@@ -26,8 +26,14 @@
 #include "mlir/Support/LLVM.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/Parser/Parser.h"
+
 // gokul addition
 #include "mlir/InitAllDialects.h"
+
+// for passes and pass manager
+#include "mlir/Parser/Parser.h"
+#include "mlir/Pass/PassManager.h"
+#include "mlir/Transforms/Passes.h"
 
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/CommandLine.h"
@@ -38,6 +44,9 @@
 
 #define GET_OP_CLASSES
 #include "lib/Dialect/GGlow/GGlowOps.cpp.inc"
+
+
+bool enableOpt = true;
 
 namespace mlir::gglow {
 void GlowDialect::initialize()
@@ -61,6 +70,14 @@ void dumpMLIR(std::string ir_content){
     if (!module){
         llvm::errs() << "Failed to parse MLIR module\n";
         return;
+    }
+
+    if(enableOpt){
+        mlir::PassManager pm(module.get()->getName());
+        pm.addNestedPass<mlir::func::FuncOp>(mlir::createCanonicalizerPass());
+
+        if (mlir::failed(pm.run(*module)))
+            llvm::errs() << "Failed to canonicalize\n";
     }
 
     module->dump();

@@ -2,7 +2,7 @@
 #include "GGlow.h"
 
 void test_GGlow(){
-    auto ir_string = R"(
+    auto constantop_string = R"(
         module {
             func.func @main() {
                 %0 = gglow.constant ( dense<[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]>
@@ -12,6 +12,31 @@ void test_GGlow(){
         }
     )";
 
-    dumpMLIR(ir_string);
+    auto transposeop_string = R"(
+        module {
+            func.func @transpose_simplify() -> tensor<2x3xf64> {
+                %0 = gglow.constant ( dense<[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]>
+                    : tensor<2x3xf64> ) -> tensor<2x3xf64>
+                %1 = gglow.transpose (%0: tensor<2x3xf64>) -> tensor<3x2xf64>
+                %2 = gglow.transpose (%1: tensor<3x2xf64>) -> tensor<2x3xf64>
+                return %2 : tensor<2x3xf64>
+            }
+        }
+    )";
+
+    auto reshapeop_string = R"(
+        module {
+            func.func @reshape_simplify() -> tensor<2x1xf64> {
+                %0 = gglow.constant ( dense<[1.0, 2.0]> : tensor<2xf64> ) -> tensor<2xf64>
+                %1 = gglow.reshape (%0: tensor<2xf64>) -> tensor<2x1xf64>
+                %2 = gglow.reshape (%1: tensor<2x1xf64>) -> tensor<2x1xf64>
+                %3 = gglow.reshape (%2: tensor<2x1xf64>) -> tensor<2x1xf64>
+                return %3 : tensor<2x1xf64>
+            }
+        }
+    )";
+
+    // dumpMLIR(transposeop_string);
+    dumpMLIR(reshapeop_string);
     return;
 } 

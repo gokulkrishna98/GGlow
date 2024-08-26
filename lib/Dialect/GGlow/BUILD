@@ -9,6 +9,7 @@ td_library(
         "GGlowDialect.td",
         "GGlowOps.td",
         "GGlowTypes.td",
+        "CanonicalizePatterns.td"
     ],
     deps = [
         "@llvm-project//mlir:BuiltinDialectTdFiles",
@@ -78,10 +79,29 @@ gentbl_cc_library(
     ],
 )
 
+gentbl_cc_library(
+    name = "canonicalize_patterns_inc_gen",
+    tbl_outs = [
+        (
+            ["-gen-rewriters"],
+            "CanonicalizePatterns.inc",
+        )
+    ],
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
+    td_file = "CanonicalizePatterns.td",
+    deps = [
+        ":dialect_inc_gen",
+        ":ops_inc_gen",
+        "td_files",
+    ]
+)
+
+
 cc_library(
     name = "GGlowDialect",
     srcs = [
-        "GGlowDialect.cc"
+        "GGlowDialect.cc",
+        "CanonicalizePatterns.cc"
     ],
     hdrs = [
         "GGlowDialect.h",
@@ -89,6 +109,7 @@ cc_library(
     deps = [
         ":dialect_inc_gen",
         ":ops_inc_gen",
+        ":canonicalize_patterns_inc_gen",
         # ":types_inc_gen",
         # mlir dependency
         "@llvm-project//mlir:ComplexDialect",
