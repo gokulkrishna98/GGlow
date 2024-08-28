@@ -34,6 +34,7 @@
 #include "mlir/Parser/Parser.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
+#include "mlir/Transforms/InliningUtils.h"
 
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/CommandLine.h"
@@ -49,22 +50,110 @@
 bool enableOpt = true;
 
 namespace mlir::gglow {
+
+struct GGlowInlinerInterface : public DialectInlinerInterface {
+    using DialectInlinerInterface::DialectInlinerInterface;
+
+    bool isLegalToInline(Operation *call, Operation *callable,
+                            bool wouldBeCloned) const final {
+        return true;
+    }
+
+    bool isLegalToInline(Operation *, Region *, bool, IRMapping &) const final {
+        return true;
+    }
+
+    bool isLegalToInline(Region *, Region *, bool, IRMapping &) const final {
+        return true;
+    }
+
+    void handleTerminator(Operation *op, ValueRange valuesToRepl) const final {
+        auto returnOp = cast<ReturnOp>(op);
+
+        assert(returnOp.getNumOperands() == valuesToRepl.size());
+        for (const auto &it : llvm::enumerate(returnOp.getOperands()))
+            valuesToRepl[it.index()].replaceAllUsesWith(it.value());
+    }
+};
+
 void GlowDialect::initialize()
 {
     addOperations<
     #define GET_OP_LIST
         #include "lib/Dialect/GGlow/GGlowOps.cpp.inc"
     >();
-    return;
+
+    addInterface<GGlowInlinerInterface>();
+
+}
+
+//===----------------------------------------------------------------------===//
+// FuncOp
+//===----------------------------------------------------------------------===//
+void FuncOp::build(mlir::OpBuilder &builder, mlir::OperationState &state,
+                   llvm::StringRef name, mlir::FunctionType type,
+                   llvm::ArrayRef<mlir::NamedAttribute> attrs)
+{
+    buildWithEntryBlock(builder, state, name, type, attrs, type.getInputs());
+}
+
+mlir::ParseResult FuncOp::parse(mlir::OpAsmParser &parser,
+                                mlir::OperationState &result)
+{
+    auto buildFuncType =
+        [](mlir::Builder &builder, llvm::ArrayRef<mlir::Type> argTypes,
+           llvm::ArrayRef<mlir::Type> results,
+           mlir::function_interface_impl::VariadicFlag,
+           std::string &)
+    { return builder.getFunctionType(argTypes, results); };
+
+    return mlir::function_interface_impl::parseFunctionOp(
+        parser, result, /*allowVariadic=*/false,
+        getFunctionTypeAttrName(result.name), buildFuncType,
+        getArgAttrsAttrName(result.name), getResAttrsAttrName(result.name));
+}
+
+void FuncOp::print(mlir::OpAsmPrinter &p)
+{
+    mlir::function_interface_impl::printFunctionOp(
+        p, *this, /*isVariadic=*/false, getFunctionTypeAttrName(),
+        getArgAttrsAttrName(), getResAttrsAttrName());
+}
+
+//===----------------------------------------------------------------------===//
+// GenericCallOp
+//===----------------------------------------------------------------------===//
+void GenericCallOp::build(mlir::OpBuilder &builder, mlir::OperationState &state,
+                          StringRef callee, ArrayRef<mlir::Value> arguments)
+{
+    state.addTypes(UnrankedTensorType::get(builder.getF64Type()));
+    state.addOperands(arguments);
+    state.addAttribute("callee",
+                       mlir::SymbolRefAttr::get(builder.getContext(), callee));
+}
+
+CallInterfaceCallable GenericCallOp::getCallableForCallee()
+{
+    return (*this)->getAttrOfType<SymbolRefAttr>("callee");
+}
+
+void GenericCallOp::setCalleeFromCallable(CallInterfaceCallable callee)
+{
+    (*this)->setAttr("callee", callee.get<SymbolRefAttr>());
+}
+
+Operation::operand_range GenericCallOp::getArgOperands() { return getInputs(); }
+
+MutableOperandRange GenericCallOp::getArgOperandsMutable()
+{
+    return getInputsMutable();
 }
 
 }
 
 void dumpMLIR(std::string ir_content){
     mlir::MLIRContext context;
-
     context.getOrLoadDialect<mlir::gglow::GlowDialect>();
-    context.getOrLoadDialect<mlir::func::FuncDialect>();
 
     auto module = mlir::parseSourceString<mlir::ModuleOp>(ir_content, &context);
     if (!module){
@@ -74,7 +163,10 @@ void dumpMLIR(std::string ir_content){
 
     if(enableOpt){
         mlir::PassManager pm(module.get()->getName());
-        pm.addNestedPass<mlir::func::FuncOp>(mlir::createCanonicalizerPass());
+        pm.addPass(mlir::createInlinerPass());
+
+        auto optPM = pm.nest<mlir::gglow::FuncOp>();
+        // optPM.addPass(mlir::createCanonicalizerPass());
 
         if (mlir::failed(pm.run(*module)))
             llvm::errs() << "Failed to canonicalize\n";
