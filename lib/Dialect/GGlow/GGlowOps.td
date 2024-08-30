@@ -1,7 +1,10 @@
 include "GGlowDialect.td"
+include "GGlowOpsInterface.td"
 
 include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/IR/SymbolInterfaces.td"
+include "mlir/Interfaces/CallInterfaces.td"
+include "mlir/Interfaces/CastInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
 /*
@@ -12,6 +15,49 @@ is ready
 
 class GGlowOp<string mnemonic, list<Trait> traits = []> :
     Op<Glow_Dialect, mnemonic, traits>;
+
+def CastOp : GGlowOp <"cast", [ 
+    DeclareOpInterfaceMethods<CastOpInterface>,
+    DeclareOpInterfaceMethods<ShapeInferenceOpInterface>,
+    Pure, 
+    SameOperandsAndResultShape]> {
+    let summary = "shape cast operation";
+    let description = [{
+        The "cast" operation converts a tensor from one type to an equivalent type
+        without changing any data elements. The source and destination types
+        must both be tensor types with the same element type. If both are ranked,
+        then shape is required to match. The operation is invalid if converting
+        to a mismatching constant dimension.
+    }];
+
+    let arguments = (ins F64Tensor:$input);
+    let results = (outs F64Tensor:$output);
+
+    let assemblyFormat = [{
+        $input attr-dict `:` type($input) `->` type($output)
+    }];
+}
+
+
+def ConstantOp : GGlowOp <"constant", [Pure]> {
+    let summary = "constant";
+    let description = [{
+        Constant operation turns a literal into an SSA value. The data is attached
+        to the operation as an attribute. For example:
+
+        ```mlir
+        %0 = "gglow.constant"() { value = dense<[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]>
+                            : tensor<2x3xf64> } : () -> tensor<2x3xf64>
+        ```
+    }]; 
+
+    let arguments = (ins F64ElementsAttr:$value);
+    let results = (outs F64Tensor);
+
+    let assemblyFormat = [{ 
+        `(` $value attr-dict `)` `->` type(results)
+    }];
+}
 
 
 def FuncOp : GGlowOp<"func", [FunctionOpInterface, IsolatedFromAbove]> {
@@ -103,6 +149,28 @@ def PrintOp : GGlowOp<"print"> {
 }
 
 
+def ReshapeOp : GGlowOp <"reshape", [Pure]> {
+    let summary = "reshape operation";
+    let description = [{
+        Reshape operation is transforming its input tensor into a new tensor with
+        the same number of elements but different shapes. For example:
+
+        ```mlir
+        %0 = gglow.reshape (%arg1 : tensor<10xf64>) -> tensor<5x2xf64>
+        ```
+    }];
+
+    let arguments = (ins F64Tensor:$input);
+    let results = (outs StaticShapeTensorOf<[F64]>);
+
+    let assemblyFormat = [{
+        `(` $input `:` type($input) attr-dict `)` `->` type(results) 
+    }];
+
+    let hasCanonicalizer = 1;
+}
+
+
 def ReturnOp : GGlowOp<"return", [Pure, HasParent<"FuncOp">,
                                  Terminator]> {
     let summary = "return operation";
@@ -133,27 +201,6 @@ def ReturnOp : GGlowOp<"return", [Pure, HasParent<"FuncOp">,
 }
 
 
-def ConstantOp : GGlowOp <"constant", [Pure]> {
-    let summary = "constant";
-    let description = [{
-        Constant operation turns a literal into an SSA value. The data is attached
-        to the operation as an attribute. For example:
-
-        ```mlir
-        %0 = "gglow.constant"() { value = dense<[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]>
-                            : tensor<2x3xf64> } : () -> tensor<2x3xf64>
-        ```
-    }]; 
-
-    let arguments = (ins F64ElementsAttr:$value);
-    let results = (outs F64Tensor);
-
-    let assemblyFormat = [{ 
-        `(` $value attr-dict `)` `->` type(results)
-    }];
-}
-
-
 def TransposeOp : GGlowOp <"transpose", [Pure]> {
     let summary = "transpose operation";
 
@@ -166,25 +213,4 @@ def TransposeOp : GGlowOp <"transpose", [Pure]> {
 
     let hasCanonicalizer = 1;
 
-}
-
-def ReshapeOp : GGlowOp <"reshape", [Pure]> {
-    let summary = "reshape operation";
-    let description = [{
-        Reshape operation is transforming its input tensor into a new tensor with
-        the same number of elements but different shapes. For example:
-
-        ```mlir
-        %0 = gglow.reshape (%arg1 : tensor<10xf64>) -> tensor<5x2xf64>
-        ```
-    }];
-
-    let arguments = (ins F64Tensor:$input);
-    let results = (outs StaticShapeTensorOf<[F64]>);
-
-    let assemblyFormat = [{
-        `(` $input `:` type($input) attr-dict `)` `->` type(results) 
-    }];
-
-    let hasCanonicalizer = 1;
 }

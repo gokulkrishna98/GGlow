@@ -54,9 +54,25 @@ void test_GGlow(){
         }
     )";
 
-    dumpMLIR(constantop_string);
-    dumpMLIR(transposeop_string);
-    dumpMLIR(reshapeop_string);
-    dumpMLIR(inline_test);
+    auto shape_inference = R"(
+            gglow.func @transpose_simplify(%arg0 : tensor<*xf64>) -> tensor<*xf64> {
+                %0 = gglow.transpose (%arg0: tensor<*xf64>) -> tensor<*xf64>
+                %1 = gglow.transpose (%0: tensor<*xf64>) -> tensor<*xf64>
+                gglow.return %1 : tensor<*xf64>
+            }
+            gglow.func @main() {
+                %0 = gglow.constant ( dense<[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]>
+                    : tensor<2x3xf64> ) -> tensor<2x3xf64>
+                %1 = gglow.generic_call @transpose_simplify(%0) : (tensor<2x3xf64>) -> tensor<*xf64>
+                gglow.print %1 : tensor<*xf64>
+                gglow.return
+            }
+    )";
+
+    // dumpMLIR(constantop_string);
+    // dumpMLIR(transposeop_string);
+    // dumpMLIR(reshapeop_string);
+    // dumpMLIR(inline_test);
+    dumpMLIR(shape_inference);
     return;
 } 

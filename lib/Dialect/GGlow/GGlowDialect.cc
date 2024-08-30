@@ -1,7 +1,6 @@
 #include "mlir/include/mlir/IR/Builders.h"
 #include "llvm/include/llvm/ADT/TypeSwitch.h"
 
-
 #include "lib/Dialect/GGlow/GGlowDialect.h"
 
 #include "lib/Dialect/GGlow/GGlowDialect.cpp.inc"
@@ -74,6 +73,12 @@ struct GGlowInlinerInterface : public DialectInlinerInterface {
         for (const auto &it : llvm::enumerate(returnOp.getOperands()))
             valuesToRepl[it.index()].replaceAllUsesWith(it.value());
     }
+
+    Operation *materializeCallConversion(OpBuilder &builder, Value input,
+                                       Type resultType,
+                                       Location conversionLoc) const final {
+        return builder.create<CastOp>(conversionLoc, resultType, input);
+    }
 };
 
 void GlowDialect::initialize()
@@ -85,6 +90,23 @@ void GlowDialect::initialize()
 
     addInterface<GGlowInlinerInterface>();
 
+}
+
+//===----------------------------------------------------------------------===//
+// CastOp
+//===----------------------------------------------------------------------===//
+bool CastOp::areCastCompatible(TypeRange inputs, TypeRange outputs) {
+  if (inputs.size() != 1 || outputs.size() != 1)
+    return false;
+  TensorType input = llvm::dyn_cast<TensorType>(inputs.front());
+  TensorType output = llvm::dyn_cast<TensorType>(outputs.front());
+  if (!input || !output || input.getElementType() != output.getElementType())
+    return false;
+  return !input.hasRank() || !output.hasRank() || input == output;
+}
+
+void CastOp::inferShapes() {
+    getResult().setType(getInput().getType());
 }
 
 //===----------------------------------------------------------------------===//
@@ -151,7 +173,22 @@ MutableOperandRange GenericCallOp::getArgOperandsMutable()
 
 }
 
-void dumpMLIR(std::string ir_content){
+
+void printAvailablePasses(mlir::OpPassManager &pm) {
+  llvm::errs() << "Available passes in the PassManager:\n";
+  
+  // Get all passes in the PassManager
+  auto passes = pm.getPasses();
+  
+  // Iterate through all passes and print their names
+  for (const auto &passIt : llvm::enumerate(passes)) {
+    const auto &passInfo = passIt.value();
+    llvm::errs() << passIt.index() + 1 << ". " << passInfo.getName() << "\n";
+    llvm::errs() << passInfo.getOpName() << "\n\n";
+  }
+}
+
+auto dumpMLIR(std::string ir_content) -> void {
     mlir::MLIRContext context;
     context.getOrLoadDialect<mlir::gglow::GlowDialect>();
 
@@ -165,8 +202,9 @@ void dumpMLIR(std::string ir_content){
         mlir::PassManager pm(module.get()->getName());
         pm.addPass(mlir::createInlinerPass());
 
-        auto optPM = pm.nest<mlir::gglow::FuncOp>();
-        // optPM.addPass(mlir::createCanonicalizerPass());
+        auto &optPM = pm.nest<mlir::gglow::FuncOp>();
+        optPM.addPass(mlir::gglow::createShapeInferencePass());
+        optPM.addPass(mlir::createCanonicalizerPass());
 
         if (mlir::failed(pm.run(*module)))
             llvm::errs() << "Failed to canonicalize\n";

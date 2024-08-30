@@ -9,9 +9,12 @@ td_library(
         "GGlowDialect.td",
         "GGlowOps.td",
         "GGlowTypes.td",
-        "CanonicalizePatterns.td"
+        "CanonicalizePatterns.td",
+        "GGlowOpsInterface.td"
     ],
     deps = [
+        "@llvm-project//mlir:CallInterfacesTdFiles",
+        "@llvm-project//mlir:CastInterfacesTdFiles",
         "@llvm-project//mlir:BuiltinDialectTdFiles",
         "@llvm-project//mlir:InferTypeOpInterfaceTdFiles",
         "@llvm-project//mlir:OpBaseTdFiles",
@@ -39,25 +42,6 @@ gentbl_cc_library(
     ],
 )
 
-# gentbl_cc_library(
-#     name = "types_inc_gen",
-#     tbl_outs = [
-#         (
-#             ["-gen-dialect-decls"],
-#             "GGlowTypes.h.inc",
-#         ),
-#         (
-#             ["-gen-dialect-defs"],
-#             "GGlowTypes.cpp.inc",
-#         ),
-#     ],
-#     tblgen = "@llvm-project//mlir:mlir-tblgen",
-#     td_file = "GGlowTypes.td",
-#     deps = [
-#         ":td_files",
-#     ],
-# )
-
 gentbl_cc_library(
     name = "ops_inc_gen",
     tbl_outs = [
@@ -75,7 +59,6 @@ gentbl_cc_library(
     deps = [
         ":dialect_inc_gen",
         ":td_files",
-        # ":types_inc_gen",
     ],
 )
 
@@ -92,7 +75,27 @@ gentbl_cc_library(
     deps = [
         ":dialect_inc_gen",
         ":ops_inc_gen",
-        "td_files",
+        ":td_files",
+    ]
+)
+
+gentbl_cc_library(
+    name = "ops_interface_inc_gen",
+    tbl_outs = [
+        (
+            ["-gen-op-interface-decls"],
+            "GGlowOpsInterface.h.inc",
+        ),
+        (
+            ["-gen-op-interface-defs"],
+            "GGlowOpsInterface.cpp.inc",
+        )
+    ],
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
+    td_file = "GGlowOpsInterface.td",
+    deps = [
+        ":dialect_inc_gen",
+        ":td_files",
     ]
 )
 
@@ -101,27 +104,33 @@ cc_library(
     name = "GGlowDialect",
     srcs = [
         "GGlowDialect.cc",
-        "CanonicalizePatterns.cc"
+        "GGlowOpsInterface.cc",
+        "CanonicalizePatterns.cc",
     ],
     hdrs = [
         "GGlowDialect.h",
+        "GGlowOpsInterface.h"
     ],
     deps = [
         ":dialect_inc_gen",
         ":ops_inc_gen",
         ":canonicalize_patterns_inc_gen",
-        # ":types_inc_gen",
+        ":ops_interface_inc_gen",
+
         # mlir dependency
-        "@llvm-project//mlir:ComplexDialect",
-        "@llvm-project//mlir:Dialect",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:InferTypeOpInterface",
-        "@llvm-project//mlir:Support",
+        "@llvm-project//mlir:AllPassesAndDialects",
         "@llvm-project//mlir:Analysis",
+        "@llvm-project//mlir:CastInterfaces",
+        "@llvm-project//mlir:CallOpInterfaces",
+        "@llvm-project//mlir:Dialect",
+        "@llvm-project//mlir:FunctionInterfaces",
+        "@llvm-project//mlir:InferTypeOpInterface",
+        "@llvm-project//mlir:IR",
         "@llvm-project//mlir:Parser",
         "@llvm-project//mlir:SideEffectInterfaces",
+        "@llvm-project//mlir:Support",
         "@llvm-project//mlir:Transforms",
-        "@llvm-project//mlir:AllPassesAndDialects",
+
         # llvm dependency
         "@llvm-project//llvm:Support"
     ],
