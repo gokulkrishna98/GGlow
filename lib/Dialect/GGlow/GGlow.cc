@@ -58,6 +58,7 @@ void test_GGlow(){
             gglow.func @transpose_simplify(%arg0 : tensor<*xf64>) -> tensor<*xf64> {
                 %0 = gglow.transpose (%arg0: tensor<*xf64>) -> tensor<*xf64>
                 %1 = gglow.transpose (%0: tensor<*xf64>) -> tensor<*xf64>
+                gglow.print %1 : tensor<*xf64>
                 gglow.return %1 : tensor<*xf64>
             }
             gglow.func @main() {
