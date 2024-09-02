@@ -11,7 +11,7 @@
 
 #include "lib/Dialect/GGlow/GGlowDialect.h.inc"
 
-#include "GGlowOpsInterface.h"
+#include "GGlowPass.h"
 
 #define GET_OP_CLASSES
 #include "lib/Dialect/GGlow/GGlowOps.h.inc"

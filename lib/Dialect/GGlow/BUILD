@@ -104,12 +104,12 @@ cc_library(
     name = "GGlowDialect",
     srcs = [
         "GGlowDialect.cc",
-        "GGlowOpsInterface.cc",
+        "GGlowPass.cc",
         "CanonicalizePatterns.cc",
     ],
     hdrs = [
         "GGlowDialect.h",
-        "GGlowOpsInterface.h"
+        "GGlowPass.h"
     ],
     deps = [
         ":dialect_inc_gen",
