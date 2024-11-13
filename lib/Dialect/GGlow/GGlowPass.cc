@@ -19,6 +19,10 @@ namespace mlir::gglow {
 
 #include "lib/Dialect/GGlow/GGlowOpsInterface.cpp.inc"
 
+
+//+++++++----------------------------------------------------------------
+//  SHAPE INFERENCE PASS
+//+++++++----------------------------------------------------------------
 struct ShapeInferencePass : public mlir::PassWrapper<ShapeInferencePass, OperationPass<mlir::gglow::FuncOp>> {
 
     static bool returnsDynamicShape(Operation* op) {
@@ -63,7 +67,6 @@ struct ShapeInferencePass : public mlir::PassWrapper<ShapeInferencePass, Operati
         return;
     }
 };
-
 
 std::unique_ptr<mlir::Pass> createShapeInferencePass(){
     return std::make_unique<ShapeInferencePass>();

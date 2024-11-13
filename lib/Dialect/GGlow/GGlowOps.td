@@ -13,8 +13,35 @@ will do a readup and implement it after general implementation
 is ready
 */
 
+/*
+---------- Operation List -------------
+- CastOp
+- ConstantOp
+- GenericCallOp (function calls)
+- FuncOp
+- PrintOp
+- ReshapeOp
+- ReturnOp
+- TransposeOp
+
+*/
+
 class GGlowOp<string mnemonic, list<Trait> traits = []> :
     Op<Glow_Dialect, mnemonic, traits>;
+
+def AddOp: GGlowOp <"add",
+    [Pure, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]>{
+    let summary = "element-wise addition operation";
+    let description = [{
+        Does element-wise addition between two tensors and shapes of both of them have to match.
+    }];
+    let arguments = (ins F64Tensor:$lhs, F64Tensor:$rhs);
+    let results = (outs F64Tensor:$output);
+
+    let assemblyFormat = [{
+        $lhs $rhs attr-dict `:` type($lhs) type($rhs) `->` type($output)
+    }];
+}
 
 def CastOp : GGlowOp <"cast", [ 
     DeclareOpInterfaceMethods<CastOpInterface>,
@@ -32,10 +59,11 @@ def CastOp : GGlowOp <"cast", [
 
     let arguments = (ins F64Tensor:$input);
     let results = (outs F64Tensor:$output);
-
     let assemblyFormat = [{
         $input attr-dict `:` type($input) `->` type($output)
     }];
+
+
 }
 
 
@@ -59,6 +87,35 @@ def ConstantOp : GGlowOp <"constant", [Pure]> {
     }];
 }
 
+def GenericCallOp : GGlowOp <"generic_call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
+    let summary = "generic call operation";
+    let description = [{
+        Generic calls represent calls to a user defined function that needs to
+        be specialized for the shape of its arguments. The callee name is attached
+        as a symbol reference via an attribute. The arguments list must match the
+        arguments expected by the callee. For example:
+
+        ```mlir
+        %4 = gglow.generic_call @my_func(%1, %3)
+            : (tensor<2x3xf64>, tensor<2x3xf64>) -> tensor<*xf64>
+        ```
+
+        This is only valid if a function named "my_func" exists and takes two
+        arguments.
+    }];
+
+    let arguments = (ins FlatSymbolRefAttr:$callee, Variadic<F64Tensor>:$inputs);
+
+    let results = (outs F64Tensor);
+
+    let assemblyFormat = [{
+        $callee `(` $inputs `)` attr-dict `:` functional-type($inputs, results)
+    }];
+    
+    let builders = [
+        OpBuilder<(ins "StringRef":$callee, "ArrayRef<Value>":$arguments)>
+    ];
+}
 
 def FuncOp : GGlowOp<"func", [FunctionOpInterface, IsolatedFromAbove]> {
     let summary = "user defined function operation";
@@ -105,34 +162,18 @@ def FuncOp : GGlowOp<"func", [FunctionOpInterface, IsolatedFromAbove]> {
 }
 
 
-def GenericCallOp : GGlowOp <"generic_call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
-    let summary = "generic call operation";
+def MulOp: GGlowOp <"mul",
+    [Pure, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]>{
+    let summary = "element-wise multiplication operation";
     let description = [{
-        Generic calls represent calls to a user defined function that needs to
-        be specialized for the shape of its arguments. The callee name is attached
-        as a symbol reference via an attribute. The arguments list must match the
-        arguments expected by the callee. For example:
-
-        ```mlir
-        %4 = gglow.generic_call @my_func(%1, %3)
-            : (tensor<2x3xf64>, tensor<2x3xf64>) -> tensor<*xf64>
-        ```
-
-        This is only valid if a function named "my_func" exists and takes two
-        arguments.
+        Does element-wise multiplication between two tensors and shapes of both of them have to match.
     }];
-
-    let arguments = (ins FlatSymbolRefAttr:$callee, Variadic<F64Tensor>:$inputs);
-
-    let results = (outs F64Tensor);
+    let arguments = (ins F64Tensor:$lhs, F64Tensor:$rhs);
+    let results = (outs F64Tensor:$output);
 
     let assemblyFormat = [{
-        $callee `(` $inputs `)` attr-dict `:` functional-type($inputs, results)
+        $lhs $rhs attr-dict `:` type($lhs) type($rhs) `->` type($output)
     }];
-    
-    let builders = [
-        OpBuilder<(ins "StringRef":$callee, "ArrayRef<Value>":$arguments)>
-    ];
 }
 
 

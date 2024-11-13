@@ -70,10 +70,22 @@ void test_GGlow(){
             }
     )";
 
+    auto partial_lowering = R"(
+            gglow.func @main() {
+                %0 = gglow.constant ( dense<[[1.000000e+00, 2.000000e+00, 3.000000e+00], 
+                    [4.000000e+00, 5.000000e+00, 6.000000e+00]]> : tensor<2x3xf64>) -> tensor<2x3xf64>
+                %1 = gglow.transpose (%0 : tensor<2x3xf64>) -> tensor<3x2xf64>
+                %2 = gglow.mul (%1, %1) -> tensor<3x2xf64>
+                gglow.print %2 : tensor<3x2xf64>
+                gglow.return
+            }
+    )";
+
     // dumpMLIR(constantop_string);
     // dumpMLIR(transposeop_string);
     // dumpMLIR(reshapeop_string);
     // dumpMLIR(inline_test);
-    dumpMLIR(shape_inference);
+    // dumpMLIR(shape_inference);
+    dumpMLIR(partial_lowering);
     return;
 } 

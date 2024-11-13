@@ -92,6 +92,14 @@ void GlowDialect::initialize()
 
 }
 
+
+//===----------------------------------------------------------------------===//
+// AddOp
+//===----------------------------------------------------------------------===//
+void AddOp::inferShapes() { 
+    getResult().setType(getLhs().getType());
+}
+
 //===----------------------------------------------------------------------===//
 // CastOp
 //===----------------------------------------------------------------------===//
@@ -171,7 +179,14 @@ MutableOperandRange GenericCallOp::getArgOperandsMutable()
     return getInputsMutable();
 }
 
+//===----------------------------------------------------------------------===//
+// MulOp 
+//===----------------------------------------------------------------------===//
+void MulOp::inferShapes() { 
+    getResult().setType(getLhs().getType());
 }
+
+} // mlir::gglow namespace end
 
 
 void printAvailablePasses(mlir::OpPassManager &pm) {

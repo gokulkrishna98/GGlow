@@ -99,13 +99,13 @@ gentbl_cc_library(
     ]
 )
 
-
 cc_library(
     name = "GGlowDialect",
     srcs = [
         "GGlowDialect.cc",
         "GGlowPass.cc",
         "CanonicalizePatterns.cc",
+        "LoweringToAffine.cpp"
     ],
     hdrs = [
         "GGlowDialect.h",
@@ -130,7 +130,6 @@ cc_library(
         "@llvm-project//mlir:SideEffectInterfaces",
         "@llvm-project//mlir:Support",
         "@llvm-project//mlir:Transforms",
-
         # llvm dependency
         "@llvm-project//llvm:Support"
     ],
