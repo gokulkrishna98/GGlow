@@ -92,6 +92,8 @@ namespace {
     LOWERING FROM GGLOW to AFFINE: Rewrite Patterns
 */
 
+
+// LOWERING BINARY OPS
 template<typename BinaryOp, typename LoweredBinaryOp>
 struct BinaryOpLowering : public ConversionPattern {
     BinaryOpLowering(MLIRContext *ctx) : ConversionPattern(BinaryOp::getOperationName(), 1, ctx) {}; 
@@ -119,20 +121,150 @@ using MulOpLowering = BinaryOpLowering<gglow::MulOp, arith::MulFOp>;
 } // ending namespace
 
 
-namespace {
-struct ToyToAffineLoweringPass
-    : public PassWrapper<ToyToAffineLoweringPass, OperationPass<ModuleOp>> {
-  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ToyToAffineLoweringPass)
+// LOWERING CONSTANT OPERATION
+struct ConstantOpLowering : public OpRewritePattern<gglow::ConstantOp> {
+    using OpRewritePattern<gglow::ConstantOp>::OpRewritePattern;
 
-  void getDependentDialects(DialectRegistry &registry) const override {
-    registry.insert<affine::AffineDialect, func::FuncDialect,
-                    memref::MemRefDialect>();
-  }
-  void runOnOperation() final;
+    LogicalResult matchAndRewrite(gglow::ConstantOp op, PatternRewriter &rewriter) const final {
+        DenseElementsAttr constant_value = op.getValue();
+        Location loc = op.getLoc();
+
+        auto tensor_type = llvm::cast<RankedTensorType>(op.getType());
+        auto memref_type = convertTensorToMemRef(tensor_type);
+        auto alloc = insertAllocAndDeAlloc(memref_type, loc, rewriter);
+
+        auto value_shape = memref_type.getShape();
+        SmallVector<Value> constant_indices;
+    
+        if(!value_shape.empty()){
+            for(auto i: llvm::seq<int64_t>(0, *std::max_element(value_shape.begin(), value_shape.end()))){
+                constant_indices.push_back(rewriter.create<arith::ConstantIndexOp>(loc, i));
+            }
+        }else{
+            constant_indices.push_back(rewriter.create<arith::ConstantIndexOp>(loc, 0));
+        } 
+
+        SmallVector<Value> indices;
+        auto value_iterator = constant_value.value_begin<FloatAttr>();
+
+        auto storeElements = [&](auto && storeElements, uint64_t dim_size) -> void {
+            if(dim_size == value_shape.size()){
+                rewriter.create<affine::AffineStoreOp>(
+                    loc, 
+                    rewriter.create<arith::ConstantOp>(loc, *value_iterator),
+                    alloc,
+                    llvm::ArrayRef(indices)
+                );
+                value_iterator++;
+                return;
+            }
+
+            for(int64_t i = 0; i < value_shape[dim_size]; i++){
+                indices.push_back(constant_indices[i]);
+                storeElements(storeElements, dim_size+1);
+                indices.pop_back();
+            }
+            return;
+        };
+
+        storeElements(storeElements, 0);
+        rewriter.replaceOp(op, alloc);
+        return success();
+    }
 };
+
+// LOWERING FUNCTION OP
+struct FuncOpLowering : public OpConversionPattern<gglow::FuncOp> {
+    using OpConversionPattern<gglow::FuncOp>::OpConversionPattern;
+    LogicalResult matchAndRewrite(gglow::FuncOp op, OpAdaptor adapter, ConversionPatternRewriter &rewriter) const final {
+        
+        if(op.getName() != "main"){
+            return failure();
+        }
+
+        if(op.getNumArguments() || op.getFunctionType().getNumResults()){
+            return rewriter.notifyMatchFailure(op, [](Diagnostic &diag) {
+                diag << "expected 'main' to have 0 inputs and 0 results";
+            });
+        }
+
+        auto func = rewriter.create<mlir::func::FuncOp>(op.getLoc(), op.getName(), op.getFunctionType());
+        rewriter.inlineRegionBefore(op.getRegion(), func.getBody(), func.end());
+        rewriter.eraseOp(op);
+
+        return success();
+    }
+};
+
+// LOWERING PRINT OPERATION
+// we do not lower it, but have to convert the operands type from tensor to memref
+struct PrintOpLowering : public OpConversionPattern<gglow::PrintOp>{
+    using OpConversionPattern<gglow::PrintOp>::OpConversionPattern;
+
+    LogicalResult matchAndRewrite(gglow::PrintOp op, OpAdaptor adapter, ConversionPatternRewriter &rewriter) const final {
+        rewriter.modifyOpInPlace(op, [&](){
+            op->setOperands(adapter.getOperands());
+        });
+
+        return success();
+    }
+};
+
+
+// LOWERING RETURN OPERATION
+struct ReturnOpLowering : public OpRewritePattern<gglow::ReturnOp> {
+    using OpRewritePattern<gglow::ReturnOp>::OpRewritePattern;
+
+    LogicalResult matchAndRewrite(gglow::ReturnOp op, PatternRewriter &rewriter) const final {
+        if(op.hasOperand()){
+            return failure();
+        }
+
+        rewriter.replaceOpWithNewOp<func::ReturnOp>(op);
+        return success();
+    }
+};
+
+
+// LOWERING TRANSPOSE OPERATION
+struct TransposeOpLowering : public ConversionPattern {
+    TransposeOpLowering(MLIRContext *ctx) : 
+        ConversionPattern(gglow::TransposeOp::getOperationName(), 1, ctx) {};
+
+    LogicalResult matchAndRewrite(Operation *op, ArrayRef<Value> operands, 
+        ConversionPatternRewriter &rewriter) const final {
+        auto loc = op->getLoc();
+        lowerOpToLoops(op, operands, rewriter, [loc](OpBuilder &builder, 
+            ValueRange mem_ref_operands, ValueRange ivs){
+            gglow::TransposeOpAdaptor transpose_adopter(mem_ref_operands);
+            Value input = transpose_adopter.getInput();
+
+            SmallVector<Value> reverse_ivs(llvm::reverse(ivs));
+            return builder.create<affine::AffineLoadOp>(loc, input, reverse_ivs);
+        });
+
+        return success();
+    }
+};
+
+
+
+namespace {
+
+struct GGlowToAffineLoweringPass
+    : public PassWrapper<GGlowToAffineLoweringPass, OperationPass<ModuleOp>> {
+    MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(GGlowToAffineLoweringPass)
+
+    void getDependentDialects(DialectRegistry &registry) const override {
+        registry.insert<affine::AffineDialect, func::FuncDialect,
+                    memref::MemRefDialect>();
+    }
+    void runOnOperation() final;
+};
+
 } // namespace
 
-void ToyToAffineLoweringPass::runOnOperation() {
+void GGlowToAffineLoweringPass::runOnOperation() {
     ConversionTarget target(getContext());
 
     target.addLegalDialect<affine::AffineDialect, BuiltinDialect,
@@ -145,7 +277,14 @@ void ToyToAffineLoweringPass::runOnOperation() {
     });
 
     RewritePatternSet patterns(&getContext());
-    patterns.add<AddOpLowering,MulOpLowering>(&getContext());
+    patterns.add<
+        AddOpLowering, 
+        MulOpLowering, 
+        ConstantOpLowering, 
+        FuncOpLowering,
+        ReturnOpLowering,
+        TransposeOpLowering,
+        PrintOpLowering>(&getContext());
 
     if (failed(applyPartialConversion(getOperation(), target, std::move(patterns))))
         signalPassFailure();
@@ -154,7 +293,7 @@ void ToyToAffineLoweringPass::runOnOperation() {
 /// Create a pass for lowering operations in the `Affine` and `Std` dialects,
 /// for a subset of the Toy IR (e.g. matmul).
 std::unique_ptr<Pass> mlir::gglow::createAffineLoweringPass() {
-  return std::make_unique<ToyToAffineLoweringPass>();
+  return std::make_unique<GGlowToAffineLoweringPass>();
 }
 
 

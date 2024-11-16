@@ -172,7 +172,7 @@ def MulOp: GGlowOp <"mul",
     let results = (outs F64Tensor:$output);
 
     let assemblyFormat = [{
-        $lhs $rhs attr-dict `:` type($lhs) type($rhs) `->` type($output)
+        `(` $lhs `:` type($lhs) `,` $rhs `:` type($rhs) `)` attr-dict `->` type($output)
     }];
 }
 
@@ -185,7 +185,7 @@ def PrintOp : GGlowOp<"print"> {
     }];
 
     // The print operation takes an input tensor to print.
-    let arguments = (ins F64Tensor:$input);
+    let arguments = (ins AnyTypeOf<[F64Tensor, F64MemRef]>:$input);
     let assemblyFormat = "$input attr-dict `:` type($input)";
 }
 

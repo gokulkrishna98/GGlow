@@ -47,6 +47,8 @@
 
 
 bool enableOpt = true;
+bool inlining_pass = false;
+bool affine_lowering = true;
 
 namespace mlir::gglow {
 
@@ -215,14 +217,26 @@ auto dumpMLIR(std::string ir_content) -> void {
 
     if(enableOpt){
         mlir::PassManager pm(module.get()->getName());
-        pm.addPass(mlir::createInlinerPass());
 
-        auto &optPM = pm.nest<mlir::gglow::FuncOp>();
-        optPM.addPass(mlir::gglow::createShapeInferencePass());
-        optPM.addPass(mlir::createCanonicalizerPass());
+        if(inlining_pass){
+            pm.addPass(mlir::createInlinerPass());
+            auto &optPM = pm.nest<mlir::gglow::FuncOp>();
+            optPM.addPass(mlir::gglow::createShapeInferencePass());
+            optPM.addPass(mlir::createCanonicalizerPass());
+            optPM.addPass(mlir::createCSEPass());
+        }        
+
+        if(affine_lowering){
+            pm.addPass(mlir::gglow::createAffineLoweringPass());
+
+            auto &optPM = pm.nest<mlir::gglow::FuncOp>();
+            optPM.addPass(mlir::gglow::createShapeInferencePass());
+            optPM.addPass(mlir::createCanonicalizerPass());
+            optPM.addPass(mlir::createCSEPass());
+        }
 
         if (mlir::failed(pm.run(*module)))
-            llvm::errs() << "Failed to canonicalize\n";
+            llvm::errs() << "Failed to run opt passes\n";
     }
 
     module->dump();

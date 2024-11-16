@@ -131,7 +131,7 @@ cc_library(
         "@llvm-project//mlir:Support",
         "@llvm-project//mlir:Transforms",
         # llvm dependency
-        "@llvm-project//llvm:Support"
+        "@llvm-project//llvm:Support",
     ],
 )
 
