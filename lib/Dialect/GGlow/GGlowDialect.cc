@@ -34,6 +34,7 @@
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
 #include "mlir/Transforms/InliningUtils.h"
+#include "mlir/Dialect/Affine/Passes.h"
 
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/CommandLine.h"
@@ -224,15 +225,19 @@ auto dumpMLIR(std::string ir_content) -> void {
             optPM.addPass(mlir::gglow::createShapeInferencePass());
             optPM.addPass(mlir::createCanonicalizerPass());
             optPM.addPass(mlir::createCSEPass());
+
         }        
 
         if(affine_lowering){
             pm.addPass(mlir::gglow::createAffineLoweringPass());
 
-            auto &optPM = pm.nest<mlir::gglow::FuncOp>();
-            optPM.addPass(mlir::gglow::createShapeInferencePass());
+            auto &optPM = pm.nest<mlir::func::FuncOp>();
             optPM.addPass(mlir::createCanonicalizerPass());
             optPM.addPass(mlir::createCSEPass());
+
+            // adding other affine based optimization
+            optPM.addPass(mlir::affine::createLoopFusionPass());
+            optPM.addPass(mlir::affine::createAffineScalarReplacementPass());
         }
 
         if (mlir::failed(pm.run(*module)))
