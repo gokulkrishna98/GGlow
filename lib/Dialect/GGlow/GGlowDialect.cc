@@ -36,6 +36,14 @@
 #include "mlir/Transforms/InliningUtils.h"
 #include "mlir/Dialect/Affine/Passes.h"
 
+// for lowering to llvmir
+#include "mlir/Dialect/Func/Extensions/AllExtensions.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
+#include "mlir/Dialect/LLVMIR/Transforms/Passes.h"
+#include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
+#include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
+#include "mlir/Target/LLVMIR/Export.h"
+
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorOr.h"
@@ -50,6 +58,7 @@
 bool enableOpt = true;
 bool inlining_pass = false;
 bool affine_lowering = true;
+bool lowering_to_llvm = true;
 
 namespace mlir::gglow {
 
@@ -209,6 +218,7 @@ void printAvailablePasses(mlir::OpPassManager &pm) {
 auto dumpMLIR(std::string ir_content) -> void {
     mlir::MLIRContext context;
     context.getOrLoadDialect<mlir::gglow::GlowDialect>();
+    context.getOrLoadDialect<mlir::cf::ControlFlowDialect>();
 
     auto module = mlir::parseSourceString<mlir::ModuleOp>(ir_content, &context);
     if (!module){
@@ -238,6 +248,11 @@ auto dumpMLIR(std::string ir_content) -> void {
             // adding other affine based optimization
             optPM.addPass(mlir::affine::createLoopFusionPass());
             optPM.addPass(mlir::affine::createAffineScalarReplacementPass());
+        }
+
+        if(lowering_to_llvm){
+            pm.addPass(mlir::gglow::createLowerToLLVMPass());
+            pm.addPass(mlir::LLVM::createDIScopeForLLVMFuncOpPass());
         }
 
         if (mlir::failed(pm.run(*module)))

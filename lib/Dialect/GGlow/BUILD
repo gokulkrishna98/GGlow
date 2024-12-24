@@ -105,7 +105,8 @@ cc_library(
         "GGlowDialect.cc",
         "GGlowPass.cc",
         "CanonicalizePatterns.cc",
-        "LoweringToAffine.cpp"
+        "LoweringToAffine.cpp",
+        "LoweringToLLVM.cpp"
     ],
     hdrs = [
         "GGlowDialect.h",

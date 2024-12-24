@@ -9,6 +9,7 @@ namespace gglow{
     #include "lib/Dialect/GGlow/GGlowOpsInterface.h.inc"
     std::unique_ptr<mlir::Pass> createShapeInferencePass();
     std::unique_ptr<mlir::Pass> createAffineLoweringPass();
+    std::unique_ptr<mlir::Pass> createLowerToLLVMPass();
 } // namespace gglow 
 } // namespace mlir
 
