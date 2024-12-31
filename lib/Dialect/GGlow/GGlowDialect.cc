@@ -63,42 +63,10 @@
 
 
 bool enableOpt = true;
-bool inlining_pass = false;
 bool affine_lowering = true;
-bool lowering_to_llvm = true;
+bool lowering_to_llvm = false;
 
 namespace mlir::gglow {
-
-struct GGlowInlinerInterface : public DialectInlinerInterface {
-    using DialectInlinerInterface::DialectInlinerInterface;
-
-    bool isLegalToInline(Operation *call, Operation *callable,
-                            bool wouldBeCloned) const final {
-        return true;
-    }
-
-    bool isLegalToInline(Operation *, Region *, bool, IRMapping &) const final {
-        return true;
-    }
-
-    bool isLegalToInline(Region *, Region *, bool, IRMapping &) const final {
-        return true;
-    }
-
-    void handleTerminator(Operation *op, ValueRange valuesToRepl) const final {
-        auto returnOp = cast<ReturnOp>(op);
-
-        assert(returnOp.getNumOperands() == valuesToRepl.size());
-        for (const auto &it : llvm::enumerate(returnOp.getOperands()))
-            valuesToRepl[it.index()].replaceAllUsesWith(it.value());
-    }
-
-    Operation *materializeCallConversion(OpBuilder &builder, Value input,
-                                       Type resultType,
-                                       Location conversionLoc) const final {
-        return builder.create<CastOp>(conversionLoc, resultType, input);
-    }
-};
 
 void GlowDialect::initialize()
 {
@@ -107,114 +75,13 @@ void GlowDialect::initialize()
         #include "lib/Dialect/GGlow/GGlowOps.cpp.inc"
     >();
 
-    addInterface<GGlowInlinerInterface>();
+}
 
 }
 
-
-//===----------------------------------------------------------------------===//
-// AddOp
-//===----------------------------------------------------------------------===//
-void AddOp::inferShapes() { 
-    getResult().setType(getLhs().getType());
-}
-
-//===----------------------------------------------------------------------===//
-// CastOp
-//===----------------------------------------------------------------------===//
-bool CastOp::areCastCompatible(TypeRange inputs, TypeRange outputs) {
-  if (inputs.size() != 1 || outputs.size() != 1)
-    return false;
-  TensorType input = llvm::dyn_cast<TensorType>(inputs.front());
-  TensorType output = llvm::dyn_cast<TensorType>(outputs.front());
-  if (!input || !output || input.getElementType() != output.getElementType())
-    return false;
-  return !input.hasRank() || !output.hasRank() || input == output;
-}
-
-void CastOp::inferShapes() {
-    getResult().setType(getInput().getType());
-}
-
-//===----------------------------------------------------------------------===//
-// FuncOp
-//===----------------------------------------------------------------------===//
-void FuncOp::build(mlir::OpBuilder &builder, mlir::OperationState &state,
-                   llvm::StringRef name, mlir::FunctionType type,
-                   llvm::ArrayRef<mlir::NamedAttribute> attrs)
-{
-    buildWithEntryBlock(builder, state, name, type, attrs, type.getInputs());
-}
-
-mlir::ParseResult FuncOp::parse(mlir::OpAsmParser &parser,
-                                mlir::OperationState &result)
-{
-    auto buildFuncType =
-        [](mlir::Builder &builder, llvm::ArrayRef<mlir::Type> argTypes,
-           llvm::ArrayRef<mlir::Type> results,
-           mlir::function_interface_impl::VariadicFlag,
-           std::string &)
-    { return builder.getFunctionType(argTypes, results); };
-
-    return mlir::function_interface_impl::parseFunctionOp(
-        parser, result, /*allowVariadic=*/false,
-        getFunctionTypeAttrName(result.name), buildFuncType,
-        getArgAttrsAttrName(result.name), getResAttrsAttrName(result.name));
-}
-
-void FuncOp::print(mlir::OpAsmPrinter &p)
-{
-    mlir::function_interface_impl::printFunctionOp(
-        p, *this, /*isVariadic=*/false, getFunctionTypeAttrName(),
-        getArgAttrsAttrName(), getResAttrsAttrName());
-}
-
-//===----------------------------------------------------------------------===//
-// GenericCallOp
-//===----------------------------------------------------------------------===//
-void GenericCallOp::build(mlir::OpBuilder &builder, mlir::OperationState &state,
-                          StringRef callee, ArrayRef<mlir::Value> arguments)
-{
-    state.addTypes(UnrankedTensorType::get(builder.getF64Type()));
-    state.addOperands(arguments);
-    state.addAttribute("callee",
-                       mlir::SymbolRefAttr::get(builder.getContext(), callee));
-}
-
-CallInterfaceCallable GenericCallOp::getCallableForCallee()
-{
-    return (*this)->getAttrOfType<SymbolRefAttr>("callee");
-}
-
-void GenericCallOp::setCalleeFromCallable(CallInterfaceCallable callee)
-{
-    (*this)->setAttr("callee", callee.get<SymbolRefAttr>());
-}
-
-Operation::operand_range GenericCallOp::getArgOperands() { return getInputs(); }
-
-MutableOperandRange GenericCallOp::getArgOperandsMutable()
-{
-    return getInputsMutable();
-}
-
-//===----------------------------------------------------------------------===//
-// MulOp 
-//===----------------------------------------------------------------------===//
-void MulOp::inferShapes() { 
-    getResult().setType(getLhs().getType());
-}
-
-} // mlir::gglow namespace end
-
-
-void printAvailablePasses(mlir::OpPassManager &pm) {
+void _printAvailablePasses(mlir::OpPassManager &pm) {
   llvm::errs() << "Available passes in the PassManager:\n";
-  
-  // Get all passes in the PassManager
   auto passes = pm.getPasses();
-  
-  // Iterate through all passes and print their names
   for (const auto &passIt : llvm::enumerate(passes)) {
     const auto &passInfo = passIt.value();
     llvm::errs() << passIt.index() + 1 << ". " << passInfo.getName() << "\n";
@@ -223,42 +90,33 @@ void printAvailablePasses(mlir::OpPassManager &pm) {
 }
 
 int runJit(mlir::ModuleOp module) {
-    // Initialize LLVM targets.
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmPrinter();
-
-    // Register the translation from MLIR to LLVM IR, which must happen before we // can JIT-compile.
     mlir::registerBuiltinDialectTranslation(*module->getContext());
     mlir::registerLLVMDialectTranslation(*module->getContext());
 
-    // An optimization pipeline to use within the execution engine.
     auto optPipeline = mlir::makeOptimizingTransformer(3, /*sizeLevel=*/0,/*targetMachine=*/nullptr);
 
-    // Create an MLIR execution engine. The execution engine eagerly JIT-compiles the module.
     mlir::ExecutionEngineOptions engineOptions;
     engineOptions.transformer = optPipeline;
     auto maybeEngine = mlir::ExecutionEngine::create(module, engineOptions);
     assert(maybeEngine && "failed to construct an execution engine");
     auto &engine = maybeEngine.get();
-
     // Invoke the JIT-compiled function.
     auto invocationResult = engine->invokePacked("main");
     if (invocationResult) {
         llvm::errs() << "JIT invocation failed\n";
         return -1;
     }
-
     return 0;
 }
 
-auto dumpMLIR(std::string ir_content) -> void {
-    // mlir::DialectRegistry registry;
-    // mlir::func::registerAllExtensions(registry);
-    // mlir::LLVM::registerInlinerInterface(registry);
-
+void dumpMLIR(std::string ir_content){
     mlir::MLIRContext context;
     context.getOrLoadDialect<mlir::gglow::GlowDialect>();
-    context.getOrLoadDialect<mlir::cf::ControlFlowDialect>();
+    context.getOrLoadDialect<mlir::func::FuncDialect>();
+    context.getOrLoadDialect<mlir::linalg::LinalgDialect>();
+    context.getOrLoadDialect<mlir::arith::ArithDialect>();
 
     auto module = mlir::parseSourceString<mlir::ModuleOp>(ir_content, &context);
     if (!module){
@@ -269,18 +127,8 @@ auto dumpMLIR(std::string ir_content) -> void {
     if(enableOpt){
         mlir::PassManager pm(module.get()->getName());
 
-        if(inlining_pass){
-            pm.addPass(mlir::createInlinerPass());
-            auto &optPM = pm.nest<mlir::gglow::FuncOp>();
-            optPM.addPass(mlir::gglow::createShapeInferencePass());
-            optPM.addPass(mlir::createCanonicalizerPass());
-            optPM.addPass(mlir::createCSEPass());
-
-        }        
-
         if(affine_lowering){
             pm.addPass(mlir::gglow::createAffineLoweringPass());
-
             auto &optPM = pm.nest<mlir::func::FuncOp>();
             optPM.addPass(mlir::createCanonicalizerPass());
             optPM.addPass(mlir::createCSEPass());
@@ -300,5 +148,5 @@ auto dumpMLIR(std::string ir_content) -> void {
     }
 
     module->dump();
-    runJit(*module);
+    // runJit(*module);
 }

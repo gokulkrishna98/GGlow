@@ -8,19 +8,14 @@
 
 #include "lib/Dialect/GGlow/GGlow.h"
 
-auto convert_to_llvm(std::string file)->void
-{
+void convert_to_llvm(std::string file){
     test_GGlow();
     return;
 }
 
 
-auto print_model_details(std::string model_path) -> void
-{
-    // layer dict
+void print_model_details(std::string model_path){
     std::unordered_map<std::string, int> layer_dict;
-
-    // reading the module
     auto module = torch::jit::load(model_path);
 
     // dfs traversal using recursive lambda
@@ -35,11 +30,8 @@ auto print_model_details(std::string model_path) -> void
     };
 
     traverse_graph(traverse_graph, module);
-
-    // print the number of layers
     std::printf("Number of unique Layers %ld\n", layer_dict.size());
 
-    // print the unique layer names
     std::printf("The Dict info: \n");
     std::printf("|%20s|%5s|\n", "LayerName", "Count");
     std::printf("----------------------------\n");
@@ -49,8 +41,7 @@ auto print_model_details(std::string model_path) -> void
 }
 
 
-auto main() -> int
-{
+int main(){
     try {
         print_model_details("/home/gokul/projects/GGlow/models/resnet18.pt");
     } catch (const c10::Error& e) {

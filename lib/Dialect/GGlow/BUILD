@@ -9,12 +9,8 @@ td_library(
         "GGlowDialect.td",
         "GGlowOps.td",
         "GGlowTypes.td",
-        "CanonicalizePatterns.td",
-        "GGlowOpsInterface.td"
     ],
     deps = [
-        "@llvm-project//mlir:CallInterfacesTdFiles",
-        "@llvm-project//mlir:CastInterfacesTdFiles",
         "@llvm-project//mlir:BuiltinDialectTdFiles",
         "@llvm-project//mlir:InferTypeOpInterfaceTdFiles",
         "@llvm-project//mlir:OpBaseTdFiles",
@@ -62,49 +58,12 @@ gentbl_cc_library(
     ],
 )
 
-gentbl_cc_library(
-    name = "canonicalize_patterns_inc_gen",
-    tbl_outs = [
-        (
-            ["-gen-rewriters"],
-            "CanonicalizePatterns.inc",
-        )
-    ],
-    tblgen = "@llvm-project//mlir:mlir-tblgen",
-    td_file = "CanonicalizePatterns.td",
-    deps = [
-        ":dialect_inc_gen",
-        ":ops_inc_gen",
-        ":td_files",
-    ]
-)
-
-gentbl_cc_library(
-    name = "ops_interface_inc_gen",
-    tbl_outs = [
-        (
-            ["-gen-op-interface-decls"],
-            "GGlowOpsInterface.h.inc",
-        ),
-        (
-            ["-gen-op-interface-defs"],
-            "GGlowOpsInterface.cpp.inc",
-        )
-    ],
-    tblgen = "@llvm-project//mlir:mlir-tblgen",
-    td_file = "GGlowOpsInterface.td",
-    deps = [
-        ":dialect_inc_gen",
-        ":td_files",
-    ]
-)
 
 cc_library(
     name = "GGlowDialect",
     srcs = [
         "GGlowDialect.cc",
         "GGlowPass.cc",
-        "CanonicalizePatterns.cc",
         "LoweringToAffine.cpp",
         "LoweringToLLVM.cpp"
     ],
@@ -115,8 +74,6 @@ cc_library(
     deps = [
         ":dialect_inc_gen",
         ":ops_inc_gen",
-        ":canonicalize_patterns_inc_gen",
-        ":ops_interface_inc_gen",
 
         # mlir dependency
         "@llvm-project//mlir:AllPassesAndDialects",
