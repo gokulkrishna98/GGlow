@@ -64,7 +64,7 @@
 
 bool enableOpt = true;
 bool affine_lowering = true;
-bool lowering_to_llvm = false;
+bool lowering_to_llvm = true;
 
 namespace mlir::gglow {
 
@@ -114,6 +114,7 @@ int runJit(mlir::ModuleOp module) {
 void dumpMLIR(std::string ir_content){
     mlir::MLIRContext context;
     context.getOrLoadDialect<mlir::gglow::GlowDialect>();
+    context.getOrLoadDialect<mlir::bufferization::BufferizationDialect>();
     context.getOrLoadDialect<mlir::func::FuncDialect>();
     context.getOrLoadDialect<mlir::linalg::LinalgDialect>();
     context.getOrLoadDialect<mlir::arith::ArithDialect>();
