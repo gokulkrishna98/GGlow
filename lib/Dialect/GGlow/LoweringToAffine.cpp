@@ -15,6 +15,8 @@
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
+
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -63,7 +65,11 @@ struct GGlowToAffineLoweringPass
     MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(GGlowToAffineLoweringPass)
 
     void getDependentDialects(DialectRegistry &registry) const override {
-        registry.insert<affine::AffineDialect, func::FuncDialect, memref::MemRefDialect>();
+        registry.insert<
+            affine::AffineDialect, 
+            func::FuncDialect, 
+            memref::MemRefDialect,
+            scf::SCFDialect>();
     }
     void runOnOperation() final;
 };
@@ -75,7 +81,7 @@ void GGlowToAffineLoweringPass::runOnOperation() {
 
     target.addLegalDialect<affine::AffineDialect, BuiltinDialect,
                             arith::ArithDialect, func::FuncDialect,
-                            memref::MemRefDialect>();
+                            memref::MemRefDialect, scf::SCFDialect>();
 
     target.addIllegalDialect<gglow::GlowDialect>();
     target.addDynamicallyLegalOp<gglow::PrintOp>([](gglow::PrintOp op) {

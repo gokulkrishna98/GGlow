@@ -78,6 +78,8 @@ cc_library(
         # mlir dependency
         "@llvm-project//mlir:AllPassesAndDialects",
         "@llvm-project//mlir:Analysis",
+        "@llvm-project//mlir:BufferizationPipelines",
+        "@llvm-project//mlir:BufferizationTransforms",
         "@llvm-project//mlir:CastInterfaces",
         "@llvm-project//mlir:CallOpInterfaces",
         "@llvm-project//mlir:Dialect",

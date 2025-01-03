@@ -13,11 +13,10 @@ void convert_to_llvm(std::string file){
     return;
 }
 
-
 void print_model_details(std::string model_path){
     std::unordered_map<std::string, int> layer_dict;
     auto module = torch::jit::load(model_path);
-
+    
     // dfs traversal using recursive lambda
     auto traverse_graph =
         [&layer_dict](auto&& traverse_graph,
