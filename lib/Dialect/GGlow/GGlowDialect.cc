@@ -1,29 +1,14 @@
 #include "GGlowPass.h"
-#include "mlir/include/mlir/IR/Builders.h"
-#include "llvm/include/llvm/ADT/TypeSwitch.h"
-
-#include "lib/Dialect/GGlow/GGlowDialect.h"
+#include "GGlowDialect.h"
 #include "lib/Dialect/GGlow/GGlowDialect.cpp.inc"
 
-#include <memory>
 #include <mlir/Conversion/AffineToStandard/AffineToStandard.h>
 #include <mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h>
 #include <mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h>
+#include <mlir/Conversion/VectorToLLVM/ConvertVectorToLLVMPass.h>
 #include <string>
-#include <system_error>
-#include <utility>
-#include <iostream>
 
 // general includes, need to clean it later
-#include "mlir/IR/Attributes.h"
-#include "mlir/IR/AsmState.h"
-#include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/BuiltinTypes.h"
-#include "mlir/IR/OpImplementation.h"
-#include "mlir/IR/Operation.h"
-#include "mlir/IR/OperationSupport.h"
-#include "mlir/IR/Value.h"
-#include "mlir/Interfaces/FunctionImplementation.h"
 #include "mlir/Support/LLVM.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/Parser/Parser.h"
@@ -35,33 +20,17 @@
 // for passes and pass manager
 #include "mlir/Parser/Parser.h"
 #include "mlir/Pass/PassManager.h"
-#include "mlir/Transforms/Passes.h"
-#include "mlir/Transforms/InliningUtils.h"
-#include "mlir/Dialect/Affine/Passes.h"
-#include "mlir/Dialect/Linalg/Passes.h"
 #include "mlir/Dialect/Bufferization/Pipelines/Passes.h"
 #include "mlir/Dialect/Bufferization/Transforms/Passes.h"
-#include "mlir/Conversion/Passes.h"
 
 // for lowering to llvmir
 #include "mlir/Dialect/MemRef/Transforms/Passes.h"
 #include "mlir/Dialect/Func/Extensions/AllExtensions.h"
-#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
-#include "mlir/Dialect/LLVMIR/Transforms/Passes.h"
 #include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
-#include "mlir/Target/LLVMIR/Export.h"
-#include "llvm/IR/Module.h"
 
-#include "llvm/ADT/StringRef.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/ErrorOr.h"
-#include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/raw_ostream.h"
-
-// lowering 
-#include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h"
 
 // jit
 #include "mlir/ExecutionEngine/ExecutionEngine.h"
@@ -139,6 +108,7 @@ void dumpMLIR(std::string ir_content){
         if(affine_lowering){
             pm.addPass(mlir::createCanonicalizerPass());
             pm.addPass(mlir::createConvertTensorToLinalgPass());
+            pm.addPass(mlir::createConvertVectorToLLVMPass());
             pm.addPass(mlir::bufferization::createOneShotBufferizePass());
             mlir::bufferization::BufferDeallocationPipelineOptions deallocationOptions;
             mlir::bufferization::buildBufferDeallocationPipeline(pm, deallocationOptions);
@@ -162,5 +132,5 @@ void dumpMLIR(std::string ir_content){
     }
 
     module->dump();
-    // runJit(*module);
+    runJit(*module);
 }
