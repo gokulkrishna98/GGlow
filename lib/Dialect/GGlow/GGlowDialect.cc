@@ -1,3 +1,4 @@
+#include "GGlowPass.h"
 #include "mlir/include/mlir/IR/Builders.h"
 #include "llvm/include/llvm/ADT/TypeSwitch.h"
 
@@ -5,6 +6,9 @@
 #include "lib/Dialect/GGlow/GGlowDialect.cpp.inc"
 
 #include <memory>
+#include <mlir/Conversion/AffineToStandard/AffineToStandard.h>
+#include <mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h>
+#include <mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -40,6 +44,7 @@
 #include "mlir/Conversion/Passes.h"
 
 // for lowering to llvmir
+#include "mlir/Dialect/MemRef/Transforms/Passes.h"
 #include "mlir/Dialect/Func/Extensions/AllExtensions.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/LLVMIR/Transforms/Passes.h"
@@ -133,12 +138,19 @@ void dumpMLIR(std::string ir_content){
         mlir::PassManager pm(module.get()->getName());
         if(affine_lowering){
             pm.addPass(mlir::createCanonicalizerPass());
+            pm.addPass(mlir::createConvertTensorToLinalgPass());
             pm.addPass(mlir::bufferization::createOneShotBufferizePass());
             mlir::bufferization::BufferDeallocationPipelineOptions deallocationOptions;
             mlir::bufferization::buildBufferDeallocationPipeline(pm, deallocationOptions);
             pm.addPass(mlir::createConvertLinalgToLoopsPass());
+            pm.addPass(mlir::createLowerAffinePass());
+            pm.addPass(mlir::createConvertSCFToCFPass());
+            pm.addPass(mlir::createConvertControlFlowToLLVMPass());
             pm.addPass(mlir::createArithToLLVMConversionPass());
             pm.addPass(mlir::createConvertFuncToLLVMPass());
+            pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass());
+            pm.addPass(mlir::createReconcileUnrealizedCastsPass());
+            pm.addPass(mlir::createCSEPass());
             pm.addPass(mlir::createCanonicalizerPass());
         }
         if(lowering_to_llvm){
