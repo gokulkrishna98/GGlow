@@ -6,6 +6,11 @@ Graph lowering (Glow) experimental implementation using MLIR
 - Install the python3.10 (preferebly using conda): [help](https://saturncloud.io/blog/how-to-create-a-conda-environment-with-a-specific-python-version/)
 - Have Clang compiler tools installed
 
+## Dependencies Added
+Need to resolve them to be done automatically from build.
+- "/usr/local/lib/libmlir_c_runner_utils.so"
+- "/usr/local/lib/libmlir_runner_utils.so"
+
 ## Building Steps
 - Clone the repo and go inside
 ```

@@ -2,6 +2,7 @@
 #include "GGlowDialect.h"
 #include "lib/Dialect/GGlow/GGlowDialect.cpp.inc"
 
+#include <llvm/ADT/StringRef.h>
 #include <mlir/Conversion/AffineToStandard/AffineToStandard.h>
 #include <mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h>
 #include <mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h>
@@ -79,9 +80,16 @@ int runJit(mlir::ModuleOp module) {
 
     mlir::ExecutionEngineOptions engineOptions;
     engineOptions.transformer = optPipeline;
-    auto maybeEngine = mlir::ExecutionEngine::create(module, engineOptions);
+    llvm::SmallVector<llvm::StringRef, 4> shared_libs;
+    // have to see how to generate .so file from my thirdy party and then link it.
+    shared_libs.push_back("/usr/local/lib/libmlir_c_runner_utils.so");
+    shared_libs.push_back("/usr/local/lib/libmlir_runner_utils.so");
+    engineOptions.sharedLibPaths = shared_libs;
+
+    auto maybeEngine = mlir::ExecutionEngine::create(module, engineOptions, nullptr);
     assert(maybeEngine && "failed to construct an execution engine");
     auto &engine = maybeEngine.get();
+
     // Invoke the JIT-compiled function.
     auto invocationResult = engine->invokePacked("main");
     if (invocationResult) {
