@@ -48,11 +48,11 @@ Using WebKit stype of format using clang-format tool
 ```
 clang-format --style=WebKit -i gglow.cpp
 ```
-
 ## Current TODO
--[x] Lower Conv2d to LLVM dialect
--[x] Generate resblock high level operation
--[ ] Convert pytorch model to IR in GGLow Dialect
--[ ] Lower to LLVM 
+- [x] Lower Conv2d to LLVM dialect
+- [x] Generate resblock high level operation
+- [ ] Convert pytorch model to IR in GGLow Dialect
+- [ ] Lower to LLVM 
+
 ## References and Learning topics
 - Torch-MLIR: https://github.com/llvm/torch-mlir/blob/main/docs/architecture.md
