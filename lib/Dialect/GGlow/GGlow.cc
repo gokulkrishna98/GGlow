@@ -17,7 +17,7 @@ void test_GGlow(){
 //     )";
     std::string test_string = R"(
 module {
-  func.func @main(){
+  func.func @main_ch(){
     %c0 = arith.constant 0 : index
     %cst = arith.constant dense<1.000000e+00> : tensor<1x2x5x5xf64>
     %cst_0 = arith.constant dense<1.000000e+00> : tensor<4x2x3x3xf64>

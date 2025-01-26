@@ -3,6 +3,7 @@
 #include "lib/Dialect/GGlow/GGlowDialect.cpp.inc"
 
 #include <llvm/ADT/StringRef.h>
+#include <llvm/Support/Error.h>
 #include <mlir/Conversion/AffineToStandard/AffineToStandard.h>
 #include <mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h>
 #include <mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h>
@@ -91,8 +92,10 @@ int runJit(mlir::ModuleOp module) {
     auto &engine = maybeEngine.get();
 
     // Invoke the JIT-compiled function.
-    auto invocationResult = engine->invokePacked("main");
+    auto invocationResult = engine->invokePacked("main_ch");
+    // auto invocationResult = engine->invoke("main_ch");
     if (invocationResult) {
+        llvm::errs() << "Errors: " << llvm::toString(std::move(invocationResult)) << "\n";
         llvm::errs() << "JIT invocation failed\n";
         return -1;
     }
