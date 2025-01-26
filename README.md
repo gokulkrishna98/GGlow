@@ -49,26 +49,10 @@ Using WebKit stype of format using clang-format tool
 clang-format --style=WebKit -i gglow.cpp
 ```
 
-## Layers Used in ResNet18
-### Conv2d
-### BatchNorm2d
-### Linear
-### ReLU
-### MaxPool2d
-### Sequential [Have to check this if this is useful]
-It is a container operation (I have to ignore it during traversing ig)
-### BasicBlock
-Similar to sequential, have to figure out what this does
-
-### AdaptiveAvgPool2d
-## Current WIP
-represent the whole graph using an IR using MLIR taking
-inspiration from Glow IR.
-
 ## Current TODO
-- Define Operations
-- Define Types
-- Create APIs to generate MLIR.
-
+-[x] Lower Conv2d to LLVM dialect
+-[x] Generate resblock high level operation
+-[ ] Convert pytorch model to IR in GGLow Dialect
+-[ ] Lower to LLVM 
 ## References and Learning topics
 - Torch-MLIR: https://github.com/llvm/torch-mlir/blob/main/docs/architecture.md
