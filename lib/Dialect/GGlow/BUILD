@@ -106,5 +106,6 @@ cc_library(
     ],
     deps = [
         ":GGlowDialect",
+        "@libtorch//:libtorch"
     ],
 )

@@ -11,6 +11,11 @@ class ResNetBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(out_channels)
         self.stride = stride
 
+        # input_tensor_info = torch.tensor([1, 3, 128, 128], dtype=torch.int64)
+        self.input_tensor_info = [1, 3, 128, 128]
+        # self.register_buffer("input_tensor_info", input_tensor_info)
+        
+
     def forward(self, x):
         identity = x 
         # First convolution + batch norm + ReLU
@@ -21,15 +26,14 @@ class ResNetBlock(nn.Module):
         out = self.conv2(out)
         out = self.bn2(out)
         # Add the residual connection
-        out += identity
-        out = self.relu(out)
+        # out += identity
+        # out = self.relu(out)
         return out
 
+
 model = ResNetBlock(3, 3, 1)
+traced_script_module = torch.jit.script(model)
+graph = traced_script_module.graph
+print(graph)
 
-input = torch.rand(1, 3, 128, 128)
-output = model(input)
-print(output.shape)
-
-traced_script_module = torch.jit.trace(model, input)
 traced_script_module.save("../models/resnet_block.pt")
