@@ -39,7 +39,7 @@ def Conv2dOp : GGlowOp<"conv2d"> {
     }];
     let arguments = (ins 
         // tensor arguments
-        AnyTensor:$x, AnyTensor:$weight, AnyTensor:$bias,
+        AnyTensor:$x, AnyTensor:$weight, Optional<AnyTensor>:$bias,
         // attributes
         I64Attr:$in_channels,
         I64Attr:$out_channels,
